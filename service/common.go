@@ -1,18 +1,23 @@
 package service
 
 import (
+	"crypto/sha1"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
-func NewFileNode(path string, hash string) FileNode {
-	node := FileNode{
-		Path: path,
-		Hash: hash,
-		Name: filepath.Base(path),
+func NewFileNode(path string, fileType FileNode_Type) *FileNode {
+	filename := filepath.Base(path)
+	hash, err := HashFile(path)
+	broken := false
+	if err != nil {
+		hash = "nohash" + path
+		broken = true
 	}
-	return node
+	return &FileNode{Name: filename, FileType: fileType, Path: path, Hash: hash, Broken: broken}
 }
 
 func CreateInfoNode(infoType string, dataNodes ...*InfoNode_DataNode) *InfoNode {
@@ -73,4 +78,35 @@ func (pn *PackageNode) Describe(less bool) string {
 		describe = append(describe, fnode.Describe(less, "\t"))
 	}
 	return strings.Join(describe, "\n")
+}
+
+func HashFile(fileName string) (string, error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return "", err
+	}
+	return Hash(f)
+}
+
+func Hash(r io.Reader) (string, error) {
+	h := sha1.New()
+	buf := make([]byte, 0, 4*1024)
+	for {
+		n, err := r.Read(buf[:cap(buf)])
+		buf = buf[:n]
+		if n == 0 {
+			if err == nil {
+				continue
+			}
+			if err == io.EOF {
+				break
+			}
+			return "", err
+		}
+		h.Write(buf)
+		if err != nil && err != io.EOF {
+			return "", err
+		}
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
