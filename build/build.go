@@ -11,6 +11,11 @@ type QmstrBuildClient struct {
 	buildService service.BuildServiceClient
 }
 
+// NewQmstrBuildClient returns a new instance of QmstrBuildClient to communicate with the build service
+func NewQmstrBuildClient(srv service.BuildServiceClient) *QmstrBuildClient {
+	return &QmstrBuildClient{buildService: srv}
+}
+
 // BuildFiles sends the given FileNode instances to the QMSTR master server
 func (qbc *QmstrBuildClient) BuildFiles(fileNodes ...*service.FileNode) error {
 	build, err := qbc.buildService.Build(context.Background())
